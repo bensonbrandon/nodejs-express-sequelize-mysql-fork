@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+# Import the Tutorial model
+from app.models.tutorial import Tutorial
+
 app = FastAPI()
 
 app.add_middleware(
