@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.declarative import declarative_base
 from app.main import app  # Assuming the FastAPI app is instantiated in app/main.py
 from app.models.tutorial import Tutorial, Base
@@ -9,7 +9,7 @@ from app.database import get_db
 
 # Setup the database for testing
 DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create the database tables
@@ -91,3 +91,47 @@ def test_delete_all_tutorials(db: Session):
     data = response.json()
     assert isinstance(data, list)
     assert len(data) == 0
+
+def test_database_connection():
+    # Test database connection
+    try:
+        db = TestingSessionLocal()
+        db.execute("SELECT 1")
+        assert True
+    except Exception as e:
+        assert False, f"Database connection failed: {e}"
+    finally:
+        db.close()
+
+def test_database_insert_and_query(db: Session):
+    # Test inserting and querying data in the database
+    new_tutorial = Tutorial(title="DB Test Title", description="DB Test Description", published=True)
+    db.add(new_tutorial)
+    db.commit()
+    db.refresh(new_tutorial)
+
+    queried_tutorial = db.query(Tutorial).filter(Tutorial.title == "DB Test Title").first()
+    assert queried_tutorial is not None
+    assert queried_tutorial.title == "DB Test Title"
+    assert queried_tutorial.description == "DB Test Description"
+    assert queried_tutorial.published is True
+
+def test_database_update(db: Session):
+    # Test updating data in the database
+    tutorial = db.query(Tutorial).filter(Tutorial.title == "DB Test Title").first()
+    tutorial.title = "DB Updated Title"
+    db.commit()
+    db.refresh(tutorial)
+
+    updated_tutorial = db.query(Tutorial).filter(Tutorial.title == "DB Updated Title").first()
+    assert updated_tutorial is not None
+    assert updated_tutorial.title == "DB Updated Title"
+
+def test_database_delete(db: Session):
+    # Test deleting data from the database
+    tutorial = db.query(Tutorial).filter(Tutorial.title == "DB Updated Title").first()
+    db.delete(tutorial)
+    db.commit()
+
+    deleted_tutorial = db.query(Tutorial).filter(Tutorial.title == "DB Updated Title").first()
+    assert deleted_tutorial is None
