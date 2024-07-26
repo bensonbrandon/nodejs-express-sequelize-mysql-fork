@@ -1,0 +1,8 @@
+# Core Dependencies
+fastapi==0.65.2
+uvicorn==0.15.0
+sqlalchemy==1.4.22
+
+# Additional Libraries
+pydantic==1.8.2
+requests==2.25.1
