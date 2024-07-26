@@ -5,6 +5,9 @@ from fastapi.staticfiles import StaticFiles
 # Import the router from the tutorial.routes module
 from .routers.tutorial.routes import router as tutorial_router
 
+# Import the Tutorial model from the models module
+from .models.tutorial import Tutorial
+
 app = FastAPI()
 
 app.add_middleware(
