@@ -1,9 +1,12 @@
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
+from app.main import app  # Assuming your FastAPI app is instantiated in app/main.py
 from app.models.tutorial import Tutorial, Base
+from app.schemas import TutorialCreate, TutorialUpdate
 
 # Setup the database for testing
 DATABASE_URL = "sqlite:///./test.db"
@@ -20,41 +23,82 @@ def db():
     yield session
     session.close()
 
-def test_create_tutorial(db: Session):
+@pytest.fixture(scope="module")
+def client():
+    with TestClient(app) as c:
+        yield c
+
+def test_create_tutorial(client: TestClient, db: Session):
     # Test creating a new tutorial
-    new_tutorial = Tutorial(title="Test Title", description="Test Description", published=True)
-    db.add(new_tutorial)
-    db.commit()
-    db.refresh(new_tutorial)
-    
-    assert new_tutorial.id is not None
-    assert new_tutorial.title == "Test Title"
-    assert new_tutorial.description == "Test Description"
-    assert new_tutorial.published is True
+    tutorial_data = {"title": "Test Title", "description": "Test Description", "published": True}
+    response = client.post("/tutorials/", json=tutorial_data)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == "Test Title"
+    assert data["description"] == "Test Description"
+    assert data["published"] is True
 
-def test_read_tutorial(db: Session):
-    # Test reading a tutorial
+def test_get_all_tutorials(client: TestClient, db: Session):
+    # Test retrieving all tutorials
+    response = client.get("/tutorials/")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) > 0
+
+def test_get_all_published_tutorials(client: TestClient, db: Session):
+    # Test retrieving all published tutorials
+    response = client.get("/tutorials/published")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert all(tutorial["published"] for tutorial in data)
+
+def test_get_tutorial(client: TestClient, db: Session):
+    # Test retrieving a single tutorial by id
     tutorial = db.query(Tutorial).filter(Tutorial.title == "Test Title").first()
-    
-    assert tutorial is not None
-    assert tutorial.title == "Test Title"
-    assert tutorial.description == "Test Description"
-    assert tutorial.published is True
+    response = client.get(f"/tutorials/{tutorial.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == "Test Title"
+    assert data["description"] == "Test Description"
+    assert data["published"] is True
 
-def test_update_tutorial(db: Session):
+def test_update_tutorial(client: TestClient, db: Session):
     # Test updating a tutorial
     tutorial = db.query(Tutorial).filter(Tutorial.title == "Test Title").first()
-    tutorial.title = "Updated Title"
-    db.commit()
-    db.refresh(tutorial)
-    
-    assert tutorial.title == "Updated Title"
+    update_data = {"title": "Updated Title", "description": "Updated Description", "published": False}
+    response = client.put(f"/tutorials/{tutorial.id}", json=update_data)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == "Updated Title"
+    assert data["description"] == "Updated Description"
+    assert data["published"] is False
 
-def test_delete_tutorial(db: Session):
+def test_delete_tutorial(client: TestClient, db: Session):
     # Test deleting a tutorial
     tutorial = db.query(Tutorial).filter(Tutorial.title == "Updated Title").first()
-    db.delete(tutorial)
-    db.commit()
-    
-    tutorial = db.query(Tutorial).filter(Tutorial.title == "Updated Title").first()
-    assert tutorial is None
+    response = client.delete(f"/tutorials/{tutorial.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == "Updated Title"
+    assert data["description"] == "Updated Description"
+    assert data["published"] is False
+
+    # Verify the tutorial is deleted
+    response = client.get(f"/tutorials/{tutorial.id}")
+    assert response.status_code == 404
+
+def test_delete_all_tutorials(client: TestClient, db: Session):
+    # Test deleting all tutorials
+    response = client.delete("/tutorials/")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 0
+
+    # Verify all tutorials are deleted
+    response = client.get("/tutorials/")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 0
