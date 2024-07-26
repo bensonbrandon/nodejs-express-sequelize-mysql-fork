@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.main import app  # Assuming your FastAPI app is instantiated in app/main.py
 from app.models.tutorial import Tutorial, Base
 from app.schemas import TutorialCreate, TutorialUpdate
+from app.database import get_db, SessionLocal
 
 # Setup the database for testing
 DATABASE_URL = "sqlite:///./test.db"
@@ -102,3 +103,22 @@ def test_delete_all_tutorials(client: TestClient, db: Session):
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 0
+
+# Additional tests for database configuration
+
+def test_database_connection():
+    # Test if the database connection is established
+    try:
+        connection = engine.connect()
+        assert connection is not None
+    finally:
+        connection.close()
+
+def test_session_management():
+    # Test if the session management works correctly
+    session = SessionLocal()
+    try:
+        assert session is not None
+        assert session.is_active
+    finally:
+        session.close()
