@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.declarative import declarative_base
 from app.main import app  # Assuming the FastAPI app is instantiated in app/main.py
 from app.models.tutorial import Tutorial, Base
@@ -9,7 +9,7 @@ from app.database import get_db
 
 # Setup the database for testing
 DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create the database tables
@@ -105,3 +105,24 @@ def test_delete_all_tutorials(db: Session):
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 0
+
+def test_database_connection():
+    # Test database connection
+    try:
+        db = TestingSessionLocal()
+        db.execute("SELECT 1")
+    except Exception as e:
+        pytest.fail(f"Database connection failed: {e}")
+    finally:
+        db.close()
+
+def test_database_schema():
+    # Test database schema
+    inspector = inspect(engine)
+    tables = inspector.get_table_names()
+    assert "tutorial" in tables
+    columns = [column['name'] for column in inspector.get_columns("tutorial")]
+    assert "id" in columns
+    assert "title" in columns
+    assert "description" in columns
+    assert "published" in columns
