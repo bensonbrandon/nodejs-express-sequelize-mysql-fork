@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-# include route, database, model
+from app.routers.tutorial.routes import router as tutorial_router  # Import the route
 
 app = FastAPI()
 
@@ -16,3 +16,5 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Base.metadata.create_all(bind=engine)
+
+app.include_router(tutorial_router, prefix="/tutorials", tags=["tutorials"])  # Register the route
