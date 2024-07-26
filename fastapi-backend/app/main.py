@@ -8,6 +8,9 @@ from .routers.tutorial.routes import router as tutorial_router
 # Import the Tutorial model from the models module
 from .models.tutorial import Tutorial
 
+# Import database configuration and initialization
+from .database import engine, Base
+
 app = FastAPI()
 
 app.add_middleware(
@@ -22,3 +25,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Register the tutorial router
 app.include_router(tutorial_router, prefix="/tutorials", tags=["tutorials"])
+
+# Create the database tables
+Base.metadata.create_all(bind=engine)
