@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.routers.tutorial.routes import router as tutorial_router  # Import the router
+from app.models.tutorial import model  # Import the model
 
 app = FastAPI()
 
